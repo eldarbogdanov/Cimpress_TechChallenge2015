@@ -1,5 +1,6 @@
 package CimpressPuzzle;
 
+import java.util.List;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonArrayBuilder;
@@ -8,7 +9,7 @@ import javax.json.JsonObject;
 
 public class Main {
 
-    static String jsonify(final String id, final Iterable<Square> squares) {
+    static String jsonify(final Iterable<Square> squares) {
         JsonBuilderFactory factory = Json.createBuilderFactory(null);
 
         JsonArrayBuilder arrayBuilder = factory.createArrayBuilder();
@@ -21,7 +22,6 @@ public class Main {
         JsonArray squaresObject = arrayBuilder.build();
 
         JsonObject ret = factory.createObjectBuilder().
-                add("id", id).
                 add("squares", squaresObject).
                 build();
         return ret.toString();
@@ -36,11 +36,17 @@ public class Main {
                 free[i][j] = args[2].charAt(i * w + j) == 'X';
             }
         }
-        final String id = args[3];
 
-        Solver solver = new GreedySolver();
+        Solver solver = new BruteForceSolver(new GreedySolverOptimized());
         Grid grid = new Grid(free);
 
-        System.out.println(jsonify(id, solver.solve(grid)));
+        final double startTime = System.currentTimeMillis();
+        final double endTime = startTime + 9500;
+
+        List<Square> solution1 = solver.solve(grid);
+        List<Square> solution2 = new RandomizedSolver(endTime, 15, 150).solve(grid);
+        System.out.println(jsonify(solution1.size() < solution2.size() ? solution1 : solution2));
+        System.err.println(solution1.size()); // brute
+        System.err.println(solution2.size()); // heuristic
     }
 }

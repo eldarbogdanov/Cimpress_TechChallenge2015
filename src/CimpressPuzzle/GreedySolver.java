@@ -4,22 +4,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GreedySolver implements Solver {
+    private final Direction horDir;
+    private final Direction verDir;
+    public GreedySolver(Direction horDir, Direction verDir) {
+        this.horDir = horDir;
+        this.verDir = verDir;
+    }
+
     @Override
     public List<Square> solve(Grid grid) {
         int n = grid.height();
         int m = grid.width();
-        ModifiableGrid myGrid = grid.modifiableCopy();
         List<Square> ret = new ArrayList<Square>();
-        for(int i = 0; i < n; i++) {
-            for(int j = 0; j < m; j++) {
-                int size = 0;
-                for(int sz = 1; ; sz++) {
-                    if (!myGrid.fits(i, j, sz)) break;
-                    size = sz;
-                }
+        ModifiableGrid myGrid = grid.modifiableCopy();
+        for(int i = verDir.getFirst(n); i != verDir.getAfterLast(n); i += verDir.getIncrement()) {
+            for(int j = horDir.getFirst(m); j != horDir.getAfterLast(m); j += horDir.getIncrement()) {
+                DirectedCell cell = new DirectedCell(i, j, horDir, verDir);
+                int size = cell.maximumFit(myGrid);
                 if (size > 0) {
-                    myGrid.paint(i, j, size);
-                    ret.add(new Square(i, j, size));
+                    myGrid.paint(cell.getTopmostCellI(size), cell.getLeftmostCellJ(size), size);
+                    ret.add(new Square(cell.getTopmostCellI(size), cell.getLeftmostCellJ(size), size));
                 }
             }
         }
