@@ -27,7 +27,7 @@ public class Main {
         return ret.toString();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         final int h = Integer.parseInt(args[0]);
         final int w = Integer.parseInt(args[1]);
         final boolean[][] free = new boolean[h][w];
@@ -37,16 +37,28 @@ public class Main {
             }
         }
 
-        Solver solver = new BruteForceSolver(new GreedySolverOptimized());
+        final long startTime = System.currentTimeMillis();
+        final long endTime = startTime + 9400;
+
         Grid grid = new Grid(free);
 
-        final double startTime = System.currentTimeMillis();
-        final double endTime = startTime + 9500;
+        Distributor distributor = new MultiThreadDistributor();
+        SolutionAggregator aggregator = new SolutionAggregatorSync();
+        try {
+            distributor.submit(grid, endTime, aggregator);
 
-        List<Square> solution1 = solver.solve(grid);
-        List<Square> solution2 = new RandomizedSolver(endTime, 15, 150).solve(grid);
-        System.out.println(jsonify(solution1.size() < solution2.size() ? solution1 : solution2));
-        System.err.println(solution1.size()); // brute
-        System.err.println(solution2.size()); // heuristic
+            Solver solver = new BruteForceSolver(new GreedySolverOptimized());
+            List<Square> solution1 = solver.solve(grid);
+
+            Thread.sleep(endTime - System.currentTimeMillis());
+            List<Square> solution2 = aggregator.getCurrent();
+
+            System.out.println(jsonify(solution1.size() < solution2.size() ? solution1 : solution2));
+            System.err.println(solution1.size()); // brute
+            System.err.println(solution2.size()); // heuristic
+        } finally {
+            distributor.shutdown();
+        }
+
     }
 }

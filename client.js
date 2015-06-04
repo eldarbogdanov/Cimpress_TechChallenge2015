@@ -1,10 +1,11 @@
 http = require('http');
 exec = require('child_process').exec;
 var baseUrl = 'techchallenge.cimpress.com';
-var iterations = 100;
+var iterations = 400;
 var env = 'trial';
 var apiKey = '971fbdd4618741b4aff4bb4f92afa78c';
 console.log(process.argv);
+var jar = process.argv[2];
 var verbose = process.argv.indexOf("-v") != -1;
 var compare = process.argv.indexOf("-c") != -1;
 
@@ -15,7 +16,6 @@ if (compare && env == 'contest') {
 
 var rating = 0.0;
 var bruteWins = 0;
-var populations = 0.0;
 
 var loopFunction = function(iterationsLeft) {
     solveOneTestcase(iterations - iterationsLeft, function afterSolve() {
@@ -24,13 +24,13 @@ var loopFunction = function(iterationsLeft) {
         if (compare) {
             // write to file the average rating, number of puzzles and ratio of brute wins
             fs = require('fs');
-            var data = populations / iterations + " " + rating / iterations + " " + iterations + " " + bruteWins;
-            fs.writeFile(process.argv[process.argv.indexOf("-c") + 1], data, function(err) {});
+            var data = rating / (iterations - iterationsLeft + 1) + " " + (iterations - iterationsLeft + 1) + " " + bruteWins;
+            fs.writeFile('report.txt', data, function(err) {});
         }
     });
 }
 var solveOneTestcase = function(it, inTheEnd) {
-    console.log('Processing puzzle #' + it);
+    console.log('Processing puzzle #' + (it + 1));
     
     var stringify = function(boolArray) {
         var ret = '';
@@ -81,7 +81,7 @@ var solveOneTestcase = function(it, inTheEnd) {
                 gridArr.push(rowStr);
             }
 
-            exec('java -jar cimpress.jar ' + json.height + ' ' + json.width + ' ' + grid, function afterSolving(error, stdout, stderr) {
+            exec('java -jar ' + jar + ' ' + json.height + ' ' + json.width + ' ' + grid, function afterSolving(error, stdout, stderr) {
                 if (error != null) {
                     console.log(error);
                     return ;
@@ -93,13 +93,12 @@ var solveOneTestcase = function(it, inTheEnd) {
                 }
 
                 if (compare) {
-                    var curPopulations = parseInt(stderr.toString().split("\n")[0])
-                    var brute = parseInt(stderr.toString().split("\n")[1]);
-                    var heuristic = parseInt(stderr.toString().split("\n")[2]);
+                    var brute = parseInt(stderr.toString().split("\n")[0]);
+                    var heuristic = parseInt(stderr.toString().split("\n")[1]);
                     if (brute < heuristic)
                         ++bruteWins;
-                    rating += brute / (brute + heuristic);
-                    populations += curPopulations;
+                    rating += brute / (brute + Math.min(heuristic, brute));
+                    console.log(brute + " " + heuristic + " " + rating / (it + 1));
                 }
 
                 var postOptions = {
@@ -114,8 +113,8 @@ var solveOneTestcase = function(it, inTheEnd) {
                 var post = http.request(postOptions, function(res) {
                     res.on('data', function(data) {
                         console.log(data.toString());
+                        inTheEnd();
                     });
-                    inTheEnd();
                 });
                 post.write(JSON.stringify(postData));
                 post.end();

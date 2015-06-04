@@ -2,16 +2,14 @@ package CimpressPuzzle;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.PriorityQueue;
 
-public class RandomizedSolver implements Solver {
-    private final double endTime;
+public class RandomizedSolver implements ResponsiveSolver {
     private final int offsprings;
     private final int survivors;
-    public RandomizedSolver(double endTime, int offsprings, int survivors) {
-        this.endTime = endTime;
+    private final long MAX_TIME_MILLIS = 10000;
+
+    public RandomizedSolver(int offsprings, int survivors) {
         this.offsprings = offsprings;
         this.survivors = survivors;
     }
@@ -112,42 +110,26 @@ public class RandomizedSolver implements Solver {
         }
     }
 
-    static class PopulationController implements Iterable<State> {
-        private final PriorityQueue<State> population;
-        private final int limit;
-        PopulationController(int limit) {
-            this.limit = limit;
-            this.population = new PriorityQueue<>();
-        }
-
-        void addState(State state) {
-            population.add(state);
-            if (population.size() > limit) {
-                population.poll();
-            }
-        }
-
-        @Override
-        public Iterator<State> iterator() {
-            return population.iterator();
-        }
-    }
-
-    @Override
-    public List<Square> solve(Grid initialGrid) {
-        PopulationController population = new PopulationController(survivors);
+    private List<Square> solveInternal(Grid initialGrid, SolutionAggregator solutionAggregator, long endByMillis, long callbackOffset, long callbackFrequency) {
+        PopulationController<State> population = new PopulationController(survivors);
         population.addState(new State(initialGrid, new ArrayList<Square>()));
 
-        int count = 0;
+        long nextCallback = System.currentTimeMillis() + callbackOffset + callbackFrequency;
         List<Square> ret = population.iterator().next().completeSquares();
-        while(System.currentTimeMillis() < endTime) {
-            PopulationController nextPopulation = new PopulationController(survivors);
+        while(true) {
+            long time = System.currentTimeMillis();
+            if (time >= endByMillis) break;
+            if (time >= nextCallback) {
+                solutionAggregator.accept(ret);
+                nextCallback += callbackFrequency;
+            }
+            PopulationController<State> nextPopulation = new PopulationController(survivors);
             for(State state : population) {
                 List<Square> candidates = getCandidates(state.grid());
                 if (candidates.isEmpty()) continue;
-                for(int offspring = 0; offspring < offsprings; offspring++) {
-                    ++count;
-                    Square sq = getRandomElement(candidates);
+                for(int offspring = 0; offspring < offsprings && offspring < candidates.size(); offspring++) {
+                    // if we consider at least as many offsprings as there are candidates, give up randomness and try each
+                    Square sq = offsprings >= candidates.size() ? candidates.get(offspring) : getRandomElement(candidates);
                     State curState = state.withSquare(sq);
                     nextPopulation.addState(curState);
                     if (curState.completeSquares().size() < ret.size()) {
@@ -157,7 +139,34 @@ public class RandomizedSolver implements Solver {
             }
             population = nextPopulation;
         }
-        System.err.println(count);
+        solutionAggregator.accept(ret);
         return ret;
+    }
+
+    @Override
+    public List<Square> solve(Grid grid) {
+        return solveInternal(
+                grid,
+                new SolutionAggregator() {
+                    @Override
+                    public void accept(List<Square> squares) {
+                    }
+
+                    @Override
+                    public List<Square> getCurrent() {
+                        return null;
+                    }
+                },
+                MAX_TIME_MILLIS,
+                0,
+                MAX_TIME_MILLIS
+        );
+    }
+
+
+    @Override
+    public void solveResponsively(Grid grid, SolutionAggregator solutionAggregator, long endByMillis, long callbackOffset,
+            long callbackFrequency) {
+        solveInternal(grid, solutionAggregator, endByMillis, callbackOffset, callbackFrequency);
     }
 }
