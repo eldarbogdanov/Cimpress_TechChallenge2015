@@ -3,44 +3,47 @@ package CimpressPuzzle;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GreedySolver implements Solver {
+public class ContourSquareChooser implements SquareChooser {
     private final Direction horDir;
     private final Direction verDir;
     private final boolean horFirst;
-    public GreedySolver(Direction horDir, Direction verDir, boolean horFirst) {
+    public ContourSquareChooser(Direction horDir, Direction verDir, boolean horFirst) {
         this.horDir = horDir;
         this.verDir = verDir;
         this.horFirst = horFirst;
     }
 
     @Override
-    public List<Square> solve(Grid grid) {
+    public Iterable<Square> provide(Grid grid) {
         int n = grid.height();
         int m = grid.width();
-        List<Square> ret = new ArrayList<Square>();
-        ModifiableGrid myGrid = grid.modifiableCopy();
         if (horFirst) {
             for (int i = verDir.getFirst(n); i != verDir.getAfterLast(n); i += verDir.getIncrement()) {
                 for (int j = horDir.getFirst(m); j != horDir.getAfterLast(m); j += horDir.getIncrement()) {
-                    work(i, j, ret, myGrid);
+                    if (!grid.fits(i, j, 1))
+                        continue;
+                    return getSquares(i, j, grid);
                 }
             }
         } else {
             for (int j = horDir.getFirst(m); j != horDir.getAfterLast(m); j += horDir.getIncrement()) {
                 for (int i = verDir.getFirst(n); i != verDir.getAfterLast(n); i += verDir.getIncrement()) {
-                    work(i, j, ret, myGrid);
+                    if (!grid.fits(i, j, 1))
+                        continue;
+                    return getSquares(i, j, grid);
                 }
             }
         }
-        return ret;
+        return new ArrayList<>();
     }
 
-    private void work(int i, int j, List<Square> ret, ModifiableGrid myGrid) {
+    private List<Square> getSquares(int i, int j, Grid grid) {
+        List<Square> ret = new ArrayList<>();
         DirectedCell cell = new DirectedCell(i, j, horDir, verDir);
-        int size = cell.maximumFit(myGrid);
-        if (size > 0) {
-            myGrid.paint(cell.getTopmostCellI(size), cell.getLeftmostCellJ(size), size);
-            ret.add(new Square(cell.getTopmostCellI(size), cell.getLeftmostCellJ(size), size));
+        int maxSize = grid.maximumFit(cell);
+        for(int sz = 1; sz <= maxSize; sz++) {
+            ret.add(new Square(cell.getTopmostCellI(sz), cell.getLeftmostCellJ(sz), sz));
         }
+        return ret;
     }
 }

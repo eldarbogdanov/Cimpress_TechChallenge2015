@@ -16,6 +16,6 @@ public class SolutionAggregatorSync implements SolutionAggregator {
 
     @Override
     public synchronized List<Square> getCurrent() {
-        return best;
+        return new ArrayList<>(best);
     }
 }

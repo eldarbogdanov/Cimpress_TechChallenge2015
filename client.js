@@ -1,7 +1,11 @@
+/*
+Usage: node client.js <jar file with solution> [-v] [-c]
+*/
+
 http = require('http');
 exec = require('child_process').exec;
 var baseUrl = 'techchallenge.cimpress.com';
-var iterations = 400;
+var iterations = 100;
 var env = 'trial';
 var apiKey = '971fbdd4618741b4aff4bb4f92afa78c';
 console.log(process.argv);
@@ -9,12 +13,9 @@ var jar = process.argv[2];
 var verbose = process.argv.indexOf("-v") != -1;
 var compare = process.argv.indexOf("-c") != -1;
 
-if (compare && env == 'contest') {
-    console.log("Will not compare in contest mode!");
-    return ;
-}
-
+// aggregators for comparison
 var rating = 0.0;
+var size = 0;
 var bruteWins = 0;
 
 var loopFunction = function(iterationsLeft) {
@@ -24,8 +25,10 @@ var loopFunction = function(iterationsLeft) {
         if (compare) {
             // write to file the average rating, number of puzzles and ratio of brute wins
             fs = require('fs');
-            var data = rating / (iterations - iterationsLeft + 1) + " " + (iterations - iterationsLeft + 1) + " " + bruteWins;
-            fs.writeFile('report.txt', data, function(err) {});
+            var iterationsSoFar = (iterations - iterationsLeft + 1)
+            var data = "Average rating: " + rating / iterationsSoFar + "\nPuzzles solved: " + iterationsSoFar +
+                       "\nBruteforce won: " + bruteWins + "\nAverage board size: " + size / iterationsSoFar;
+            fs.writeFile(jar + '.txt', data, function(err) {});
         }
     });
 }
@@ -94,11 +97,12 @@ var solveOneTestcase = function(it, inTheEnd) {
 
                 if (compare) {
                     var brute = parseInt(stderr.toString().split("\n")[0]);
-                    var heuristic = parseInt(stderr.toString().split("\n")[1]);
-                    if (brute < heuristic)
+                    var contour = parseInt(stderr.toString().split("\n")[1]);
+                    if (brute < contour)
                         ++bruteWins;
-                    rating += brute / (brute + Math.min(heuristic, brute));
-                    console.log(brute + " " + heuristic + " " + rating / (it + 1));
+                    rating += brute / (brute + contour);
+                    size += gridArr.length * gridArr[0].length;
+                    console.log(brute + " " + contour + " " + gridArr.length + " " + gridArr[0].length + " " + rating / (it + 1));
                 }
 
                 var postOptions = {

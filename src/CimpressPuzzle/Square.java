@@ -10,4 +10,30 @@ public class Square {
         this.j = j;
         this.size = size;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        Square square = (Square) o;
+
+        if (i != square.i)
+            return false;
+        if (j != square.j)
+            return false;
+        return size == square.size;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = i;
+        result = 31 * result + j;
+        result = 31 * result + size;
+        return result;
+    }
+
 }
